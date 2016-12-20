@@ -1,0 +1,307 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+	"Description": "Master VPC template and subnet configuration.  Public and Application Subnets in all 3 AZs, along with an IGW, routes, ACLs",
+	"Parameters": {
+		"TagVPCName": {
+			"Type": "String",
+			"Default": "vpc-1",
+			"Description": "Name tag for VPC identification"
+		}
+	},
+	"Mappings": {
+		"SubnetConfig": {
+			"VPC": {
+				"CIDR": "10.0.0.0/16"
+			},
+			"PubAZA": {
+				"CIDR": "10.0.0.0/26",
+				"AZ": "us-west-2a"
+			},
+			"PubAZB": {
+				"CIDR": "10.0.0.64/26",
+				"AZ": "us-west-2b"
+			},
+			"PubAZC": {
+				"CIDR": "10.0.0.128/26",
+				"AZ": "us-west-2c"
+			},
+			"AppAZA": {
+				"CIDR": "10.0.1.0/26",
+				"AZ": "us-west-2a"
+			},
+			"AppAZB": {
+				"CIDR": "10.0.1.64/26",
+				"AZ": "us-west-2b"
+			},
+			"AppAZC": {
+				"CIDR": "10.0.1.128/26",
+				"AZ": "us-west-2c"
+			}
+		}
+	},
+
+	"Resources": {
+		"VPC": {
+			"Type": "AWS::EC2::VPC",
+			"Properties": {
+				"EnableDnsSupport": "true",
+				"EnableDnsHostnames": "true",
+				"CidrBlock": {
+					"Fn::FindInMap": ["SubnetConfig", "VPC", "CIDR"]
+				},
+				"Tags": [{
+					"Key": "Name",
+					"Value": {
+						"Ref": "TagVPCName"
+					}
+				}, {
+					"Key": "Application",
+					"Value": {
+						"Ref": "AWS::StackName"
+					}
+				}, {
+					"Key": "Network",
+					"Value": "Public"
+				}]
+			}
+		},
+
+"InternetGateway" : {
+      "Type" : "AWS::EC2::InternetGateway",
+      "Properties" : {
+        "Tags" : [
+		  { "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
+          { "Key" : "Network", "Value" : "Public" }
+        ]
+      }
+    },
+
+    "GatewayToInternet" : {
+       "Type" : "AWS::EC2::VPCGatewayAttachment",
+       "Properties" : {
+         "VpcId" : { "Ref" : "VPC" },
+         "InternetGatewayId" : { "Ref" : "InternetGateway" }
+       }
+    },
+"PubRouteTable" : {
+      "Type" : "AWS::EC2::RouteTable",
+      "Properties" : {
+        "VpcId" : { "Ref" : "VPC" },
+        "Tags" : [
+          { "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
+          { "Key" : "Network", "Value" : "Public" }
+        ]
+      }
+    },
+"AppRouteTable" : {
+      "Type" : "AWS::EC2::RouteTable",
+      "Properties" : {
+        "VpcId" : { "Ref" : "VPC" },
+        "Tags" : [
+          { "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
+          { "Key" : "Network", "Value" : "Application" }
+        ]
+      }
+    },
+"PublicRoute" : {
+      "Type" : "AWS::EC2::Route",
+      "DependsOn" : "GatewayToInternet",
+      "Properties" : {
+        "RouteTableId" : { "Ref" : "PubRouteTable" },
+        "DestinationCidrBlock" : "0.0.0.0/0",
+        "GatewayId" : { "Ref" : "InternetGateway" }
+      }
+    },
+
+    
+		"PubAZASubnet": {
+			"Type": "AWS::EC2::Subnet",
+			"Properties": {
+				"VpcId": {
+					"Ref": "VPC"
+				},
+				"CidrBlock": {
+					"Fn::FindInMap": ["SubnetConfig", "PubAZA", "CIDR"]
+				},
+				"AvailabilityZone": {
+					"Fn::FindInMap": ["SubnetConfig", "PubAZA", "AZ"]
+				},
+				"Tags": [{
+					"Key": "Name",
+					"Value": "Public AZA"
+				}, {
+					"Key": "Application",
+					"Value": {
+						"Ref": "AWS::StackName"
+					}
+				}, {
+					"Key": "Network",
+					"Value": "Public AZA"
+				}]
+			}
+		},
+"PubAZASubnetRouteTableAssociation" : {
+      "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties" : {
+        "SubnetId" : { "Ref" : "PubAZASubnet" },
+        "RouteTableId" : { "Ref" : "PubRouteTable" }
+      }
+    },
+
+		"PubAZBSubnet": {
+			"Type": "AWS::EC2::Subnet",
+			"Properties": {
+				"VpcId": {
+					"Ref": "VPC"
+				},
+				"CidrBlock": {
+					"Fn::FindInMap": ["SubnetConfig", "PubAZB", "CIDR"]
+				},
+				"AvailabilityZone": {
+					"Fn::FindInMap": ["SubnetConfig", "PubAZB", "AZ"]
+				},
+				"Tags": [{
+					"Key": "Name",
+					"Value": "Public AZB"
+				}, {
+					"Key": "Application",
+					"Value": {
+						"Ref": "AWS::StackName"
+					}
+				}, {
+					"Key": "Network",
+					"Value": "Public AZB"
+				}]
+			}
+		},
+"PubAZBSubnetRouteTableAssociation" : {
+      "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties" : {
+        "SubnetId" : { "Ref" : "PubAZBSubnet" },
+        "RouteTableId" : { "Ref" : "PubRouteTable" }
+      }
+    },
+
+		"PubAZCSubnet": {
+			"Type": "AWS::EC2::Subnet",
+			"Properties": {
+				"VpcId": {
+					"Ref": "VPC"
+				},
+				"CidrBlock": {
+					"Fn::FindInMap": ["SubnetConfig", "PubAZC", "CIDR"]
+				},
+				"AvailabilityZone": {
+					"Fn::FindInMap": ["SubnetConfig", "PubAZC", "AZ"]
+				},
+				"Tags": [{
+					"Key": "Name",
+					"Value": "Public AZC"
+				}, {
+					"Key": "Application",
+					"Value": {
+						"Ref": "AWS::StackName"
+					}
+				}, {
+					"Key": "Network",
+					"Value": "Public AZC"
+				}]
+			}
+		},
+"PubAZCSubnetRouteTableAssociation" : {
+      "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties" : {
+        "SubnetId" : { "Ref" : "PubAZCSubnet" },
+        "RouteTableId" : { "Ref" : "PubRouteTable" }
+      }
+    },
+
+		"AppAZASubnet": {
+			"Type": "AWS::EC2::Subnet",
+			"Properties": {
+				"VpcId": {
+					"Ref": "VPC"
+				},
+				"CidrBlock": {
+					"Fn::FindInMap": ["SubnetConfig", "AppAZA", "CIDR"]
+				},
+				"AvailabilityZone": {
+					"Fn::FindInMap": ["SubnetConfig", "AppAZA", "AZ"]
+				},
+				"Tags": [{
+					"Key": "Name",
+					"Value": "Application AZA"
+				}, {
+					"Key": "Application",
+					"Value": {
+						"Ref": "AWS::StackName"
+					}
+				}, {
+					"Key": "Network",
+					"Value": "Application AZA"
+				}]
+			}
+		},
+		"AppAZBSubnet": {
+			"Type": "AWS::EC2::Subnet",
+			"Properties": {
+				"VpcId": {
+					"Ref": "VPC"
+				},
+				"CidrBlock": {
+					"Fn::FindInMap": ["SubnetConfig", "AppAZB", "CIDR"]
+				},
+				"AvailabilityZone": {
+					"Fn::FindInMap": ["SubnetConfig", "AppAZB", "AZ"]
+				},
+				"Tags": [{
+					"Key": "Name",
+					"Value": "Application AZB"
+				}, {
+					"Key": "Application",
+					"Value": {
+						"Ref": "AWS::StackName"
+					}
+				}, {
+					"Key": "Network",
+					"Value": "Application AZB"
+				}]
+			}
+		},
+		"AppAZCSubnet": {
+			"Type": "AWS::EC2::Subnet",
+			"Properties": {
+				"VpcId": {
+					"Ref": "VPC"
+				},
+				"CidrBlock": {
+					"Fn::FindInMap": ["SubnetConfig", "AppAZC", "CIDR"]
+				},
+				"AvailabilityZone": {
+					"Fn::FindInMap": ["SubnetConfig", "AppAZC", "AZ"]
+				},
+				"Tags": [{
+					"Key": "Name",
+					"Value": "Application AZC"
+				}, {
+					"Key": "Application",
+					"Value": {
+						"Ref": "AWS::StackName"
+					}
+				}, {
+					"Key": "Network",
+					"Value": "Application AZC"
+				}]
+			}
+		}
+	},
+
+	"Outputs": {
+		"VPCId": {
+			"Description": "VPCId of the newly created VPC",
+			"Value": {
+				"Ref": "VPC"
+			}
+		}
+	}
+}
